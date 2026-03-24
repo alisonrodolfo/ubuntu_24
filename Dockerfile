@@ -7,9 +7,7 @@ LABEL       author="Alison Barreiro" maintainer="equipemasters@live.com"
 
 ENV         DEBIAN_FRONTEND=noninteractive
 
-# 1. Adiciona arquitetura i386
-# 2. Instala dependências essenciais de 64 bits
-# 3. Instala as bibliotecas de compatibilidade 32 bits necessárias para o SA-MP
+# 1. Instalação de dependências e libs 32-bit para SA-MP
 RUN         dpkg --add-architecture i386 \
             && apt-get update \
             && apt-get -y upgrade \
@@ -26,32 +24,25 @@ RUN         dpkg --add-architecture i386 \
                 libstdc++6 \
                 libstdc++6:i386 \
                 libncurses5:i386 \
-                libssl-dev:i386 \
                 libmysqlclient-dev \
-            && apt-get install -y --no-install-recommends \
                 lib32stdc++6 \
                 lib32z1 \
-                libtbb-dev:i386 || true \
             && apt-get clean \
             && rm -rf /var/lib/apt/lists/*
 
-# Configura timezone
-RUN         ln -fs /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
-            && dpkg-reconfigure --frontend noninteractive tzdata
+# 2. Configura Timezone (Nova forma para evitar erro de dpkg-reconfigure)
+RUN         ln -snf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
+            && echo "America/Sao_Paulo" > /etc/timezone
 
-# Cria usuário container (Padrão Pterodactyl)
+# 3. Configuração do Usuário
 RUN         useradd -d /home/container -m container
 
 USER        container
 ENV         USER=container HOME=/home/container
 WORKDIR     /home/container
 
+# Copia o entrypoint
 COPY        ./entrypoint.sh /entrypoint.sh
 
-# Garante que o entrypoint tenha permissão (caso o Windows tenha removido)
-# Como você usa Windows, isso previne erros de "Permission Denied" no GitHub Actions
-USER root
-RUN chmod +x /entrypoint.sh
-USER container
-
+# O CMD deve rodar o bash para executar o seu script
 CMD         ["/bin/bash", "/entrypoint.sh"]
